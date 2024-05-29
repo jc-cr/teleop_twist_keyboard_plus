@@ -8,6 +8,7 @@
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
 #include <std_msgs/String.h>
+#include <assert.h>
 
 static struct termios cooked;
 static int kfd = 0;
@@ -47,6 +48,7 @@ TeleopTwistKeyboardPlus::TeleopTwistKeyboardPlus(ros::NodeHandle &nh, ros::NodeH
         pnh.param("config_file", config_path, config_path);
         _loadBindings(config_path);
     }
+    
     catch (const ros::Exception &e)
     {
         ROS_ERROR("Failed to initialize teleop_twist_keyboard_plus: %s", e.what());
@@ -69,57 +71,59 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
         {
             char key = item.second.as<std::string>()[0];
             std::string action = item.first.as<std::string>();
+            _actionBindings[key] = action;
 
-            // Note: The particualr order here is important as we use it to print the help message
             if (action == "forward_left")
-                {
-                    _moveBindings[key] = {1, 0, 0, 1}; // Forward-Left
-                }
+            {
+                _moveBindings[key] = {1, 0, 0, 1}; // Forward-Left
+            }
             else if (action == "forward")
-                {
-                    _moveBindings[key] = {1, 0, 0, 0}; // Forward
-                }
+            {
+                _moveBindings[key] = {1, 0, 0, 0}; // Forward
+            }
             else if (action == "forward_right")
-                {
-                    _moveBindings[key] = {1, 0, 0, -1}; // Forward-Right
-                }
+            {
+                _moveBindings[key] = {1, 0, 0, -1}; // Forward-Right
+            }
             else if (action == "left")
-                {
-                    _moveBindings[key] = {0, 0, 0, 1}; // Left
-                }
+            {
+                _moveBindings[key] = {0, 0, 0, 1}; // Left
+            }
             else if (action == "no_movement")
-                {
-                }
+            {
+                // No movement, do nothing
+            }
             else if (action == "right")
-                {
-                    _moveBindings[key] = {0, 0, 0, -1}; // Right
-                }
+            {
+                _moveBindings[key] = {0, 0, 0, -1}; // Right
+            }
             else if (action == "backward_left")
-                {
-                    _moveBindings[key] = {-1, 0, 0, 1}; // Backward-Left
-                }
+            {
+                _moveBindings[key] = {-1, 0, 0, 1}; // Backward-Left
+            }
             else if (action == "backward")
-                {
-                    _moveBindings[key] = {-1, 0, 0, 0}; // Backward
-                }
+            {
+                _moveBindings[key] = {-1, 0, 0, 0}; // Backward
+            }
             else if (action == "backward_right")
-                {
-                    _moveBindings[key] = {-1, 0, 0, -1}; // Backward-Right
-                }
+            {
+                _moveBindings[key] = {-1, 0, 0, -1}; // Backward-Right
+            }
             else if (action == "up")
-                {
-                    _moveBindings[key] = {0, 0, 1, 0}; // Up
-                }
+            {
+                _moveBindings[key] = {0, 0, 1, 0}; // Up
+            }
             else if (action == "down")
-                {
-                    _moveBindings[key] = {0, 0, -1, 0}; // Down
-                }
+            {
+                _moveBindings[key] = {0, 0, -1, 0}; // Down
+            }
         }
 
         for (const auto &item : config["holonomic_move_bindings"])
         {
             char key = item.second.as<std::string>()[0];
             std::string action = item.first.as<std::string>();
+            _holonomicActionBindings[key] = action;
 
             if (action == "holonomic_forward")
             {
@@ -135,7 +139,7 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
             }
             else if (action == "holonomic_no_movement")
             {
-
+                // No movement, do nothing
             }
             else if (action == "holonomic_right")
             {
@@ -211,30 +215,7 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
     }
 }
 
-// Reading from the keyboard  and Publishing to Twist!
-// ---------------------------
-// Moving around:
-   // u    i    o
-   // j    k    l
-   // m    ,    .
-// 
-// For Holonomic mode (strafing), hold down the shift key:
-// ---------------------------
-   // U    I    O
-   // J    K    L
-   // M    <    >
-// 
-// t : up (+z)
-// b : down (-z)
-// 
-// anything else : stop
-// 
-// q/z : increase/decrease max speeds by 10%
-// w/x : increase/decrease only linear speed by 10%
-// e/c : increase/decrease only angular speed by 10%
-// 
-// CTRL-C to quit
-// """
+
 
 void TeleopTwistKeyboardPlus::_printHelpMessage()
 {
@@ -242,40 +223,55 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     std::cout << "---------------------------\n";
     std::cout << "Moving around:\n";
 
-    auto printRow = [](const std::map<char, std::vector<float>>& bindings, const std::initializer_list<std::string>& order) {
-        for (const auto& action : order)
-        {
-            char key = action[0];
-            if (bindings.count(key))
-            {
-                std::cout << key << "    ";
-            }
-            else
-            {
-                std::cout << "     ";
+    // Helper lambda to find and print a key for a given action
+    auto findAndPrintKey = [](const std::map<char, std::string>& bindings, const std::string& action) {
+        for (const auto& binding : bindings) {
+            if (binding.second == action) {
+                std::cout << binding.first << "    ";
+                return;
             }
         }
-        std::cout << "\n";
+        std::cout << "     ";
     };
 
-    // Print the standard movement keys in a 3x3 grid
-    printRow(_moveBindings, {"u", "i", "o"});
-    printRow(_moveBindings, {"j", "k", "l"});
-    printRow(_moveBindings, {"m", ",", "."});
+    // Print the standard movement keys in the required format
+    findAndPrintKey(_actionBindings, "forward_left");
+    findAndPrintKey(_actionBindings, "forward");
+    findAndPrintKey(_actionBindings, "forward_right");
+    std::cout << "\n";
+    findAndPrintKey(_actionBindings, "left");
+    findAndPrintKey(_actionBindings, "no_movement");
+    findAndPrintKey(_actionBindings, "right");
+    std::cout << "\n";
+    findAndPrintKey(_actionBindings, "backward_left");
+    findAndPrintKey(_actionBindings, "backward");
+    findAndPrintKey(_actionBindings, "backward_right");
+    std::cout << "\n";
 
     std::cout << "\nFor Holonomic mode (strafing), hold down the shift key:\n";
     std::cout << "---------------------------\n";
 
-    // Print the holonomic movement keys in a 3x3 grid
-    printRow(_holonomicMoveBindings, {"U", "I", "O"});
-    printRow(_holonomicMoveBindings, {"J", "K", "L"});
-    printRow(_holonomicMoveBindings, {"M", "<", ">"});
+    // Print the holonomic movement keys in the required format
+    findAndPrintKey(_holonomicActionBindings, "holonomic_forward_left");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_forward");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_forward_right");
+    std::cout << "\n";
+    findAndPrintKey(_holonomicActionBindings, "holonomic_left");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_no_movement");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_right");
+    std::cout << "\n";
+    findAndPrintKey(_holonomicActionBindings, "holonomic_backward_left");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_backward");
+    findAndPrintKey(_holonomicActionBindings, "holonomic_backward_right");
+    std::cout << "\n";
 
     std::cout << "\n";
 
     // Print the vertical movement keys
-    std::cout << "t : up (+z)\n";
-    std::cout << "b : down (-z)\n\n";
+    findAndPrintKey(_actionBindings, "up");
+    std::cout << " : up (+z)\n";
+    findAndPrintKey(_actionBindings, "down");
+    std::cout << " : down (-z)\n\n";
 
     std::cout << "anything else : stop\n\n";
 

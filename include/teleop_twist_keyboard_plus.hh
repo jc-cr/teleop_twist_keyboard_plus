@@ -23,7 +23,9 @@ private:
     ros::Publisher _cmd_vel_pub;
 
     std::map<char, std::vector<float>> _moveBindings;
+    std::map<char, std::string> _actionBindings; 
     std::map<char, std::vector<float>> _holonomicMoveBindings;
+    std::map<char, std::string> _holonomicActionBindings; 
     std::map<char, std::pair<float, float>> _speedBindings;
     std::map<char, std::function<void()>> _customBindings;
 
