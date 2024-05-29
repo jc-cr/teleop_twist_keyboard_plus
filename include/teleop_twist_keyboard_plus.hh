@@ -2,6 +2,11 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <yaml-cpp/yaml.h>
+#include <map>
+#include <string>
+#include <functional>
+#include <std_msgs/String.h>
 
 class TeleopTwistKeyboardPlus
 {
@@ -11,13 +16,16 @@ public:
     void keyLoop();
 
 private:
-    void loadBindings(const std::string &config_file);
+    void _loadBindings(const std::string &config_file);
+    void _printHelpMessage();
 
     ros::NodeHandle _nh;
     ros::Publisher _cmd_vel_pub;
 
     std::map<char, std::vector<float>> _moveBindings;
-    std::map<char, std::vector<float>> _speedBindings;
+    std::map<char, std::vector<float>> _holonomicMoveBindings;
+    std::map<char, std::pair<float, float>> _speedBindings;
+    std::map<char, std::function<void()>> _customBindings;
 
     float _speed;
     float _turn;
