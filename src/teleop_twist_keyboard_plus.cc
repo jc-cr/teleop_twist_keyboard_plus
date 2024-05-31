@@ -27,7 +27,6 @@ void static signalHandler(int sig)
     exit(0);
 }
 
-
 TeleopTwistKeyboardPlus::TeleopTwistKeyboardPlus(ros::NodeHandle &nh, ros::NodeHandle &pnh)
     : _nh(nh), _speed(0.5), _turn(1.0), _speed_limit(1000), _turn_limit(1000), _key_timeout(0.5)
 {
@@ -48,7 +47,7 @@ TeleopTwistKeyboardPlus::TeleopTwistKeyboardPlus(ros::NodeHandle &nh, ros::NodeH
         pnh.param("config_file", config_path, config_path);
         _loadBindings(config_path);
     }
-    
+
     catch (const ros::Exception &e)
     {
         ROS_ERROR("Failed to initialize teleop_twist_keyboard_plus: %s", e.what());
@@ -198,6 +197,10 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
         {
             char key = item.second.as<std::string>()[0];
             std::string topic = item.first.as<std::string>();
+            // Store the topic name for printing help message
+            // Is inserted in the same order as the bindings
+            _topic_names.insert(_topic_names.begin(), topic); 
+
             _customBindings[key] = [this, topic]()
             {
                 std_msgs::String msg;
@@ -215,8 +218,6 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
     }
 }
 
-
-
 void TeleopTwistKeyboardPlus::_printHelpMessage()
 {
     std::cout << "Reading from the keyboard and publishing to Twist!\n";
@@ -224,9 +225,12 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     std::cout << "Moving around:\n";
 
     // Helper lambda to find and print a key for a given action
-    auto findAndPrintKey = [](const std::map<char, std::string>& bindings, const std::string& action) {
-        for (const auto& binding : bindings) {
-            if (binding.second == action) {
+    auto findAndPrintKey = [](const std::map<char, std::string> &bindings, const std::string &action)
+    {
+        for (const auto &binding : bindings)
+        {
+            if (binding.second == action)
+            {
                 std::cout << binding.first << "    ";
                 return;
             }
@@ -276,14 +280,43 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     std::cout << "anything else : stop\n\n";
 
     // Print the speed adjustment keys
-    std::cout << "q/z : increase/decrease max speeds by 10%\n";
-    std::cout << "w/x : increase/decrease only linear speed by 10%\n";
-    std::cout << "e/c : increase/decrease only angular speed by 10%\n\n";
+
+    // char key = item.second.as<std::string>()[0];
+    //  std::string action = item.first.as<std::string>();
+
+    std::cout << "/";
+    // findAndPrintKey(_speedBindings, "decrease_max_speed_by_10");
+    // std::cout << " : increase/decrease max speeds by 10%\n";
+
+    // findAndPrintKey(_speedBindings, "increase_linear_speed_by_10");
+    // std::cout << "/";
+    // findAndPrintKey(_speedBindings, "decrease_linear_speed_by_10");
+    // std::cout << " : increase/decrease only linear speed by 10%\n";
+
+    // findAndPrintKey(_speedBindings, "increase_angular_speed_by_10");
+    // std::cout << "/";
+    // findAndPrintKey(_speedBindings, "decrease_angular_speed_by_10");
+    // std::cout << " : increase/decrease only angular speed by 10%\n\n";
 
     std::cout << "CTRL-C to quit" << std::endl;
+
+    // Print the custom bindings
+    std::cout << "\nCustom bindings:\n";
+    std::cout << "---------------------------\n";
+
+    auto print_map = [](const std::unordered_map<char, std::function<void()>> &m, std::vector<std::string> &vector_of_strings)
+    {
+        int vector_iterator = 0;
+
+        for (auto it = m.cbegin(); it != m.cend(); ++it)
+        {
+                std::cout << it->first << " : " << vector_of_strings[vector_iterator] << "\n";
+                vector_iterator++;
+        }
+    };
+
+    print_map(_customBindings, _topic_names);
 }
-
-
 
 void TeleopTwistKeyboardPlus::keyLoop()
 {

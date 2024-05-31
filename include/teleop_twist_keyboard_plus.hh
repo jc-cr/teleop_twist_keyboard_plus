@@ -4,6 +4,7 @@
 #include <geometry_msgs/Twist.h>
 #include <yaml-cpp/yaml.h>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <functional>
 #include <std_msgs/String.h>
@@ -27,7 +28,10 @@ private:
     std::map<char, std::vector<float>> _holonomicMoveBindings;
     std::map<char, std::string> _holonomicActionBindings; 
     std::map<char, std::pair<float, float>> _speedBindings;
-    std::map<char, std::function<void()>> _customBindings;
+    std::unordered_map<char, std::function<void()>> _customBindings;
+
+
+    std::vector<std::string> _topic_names;
 
     float _speed;
     float _turn;

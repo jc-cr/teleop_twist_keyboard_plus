@@ -31,6 +31,7 @@ speed_bindings:
   increase_angular_speed_by_10: e
 
 custom_bindings:
+  # Format: string name of topic to publish to: key press
   publish:
     mission_start: s
     mission_stop: p
