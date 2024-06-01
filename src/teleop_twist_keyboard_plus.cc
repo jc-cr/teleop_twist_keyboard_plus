@@ -8,6 +8,9 @@
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 #include <assert.h>
 
 static struct termios cooked;
@@ -47,7 +50,6 @@ TeleopTwistKeyboardPlus::TeleopTwistKeyboardPlus(ros::NodeHandle &nh, ros::NodeH
         pnh.param("config_file", config_path, config_path);
         _loadBindings(config_path);
     }
-
     catch (const ros::Exception &e)
     {
         ROS_ERROR("Failed to initialize teleop_twist_keyboard_plus: %s", e.what());
@@ -193,21 +195,63 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
             }
         }
 
-        for (const auto &item : config["custom_bindings"]["publish"])
+        for (const auto &custom_item : config["custom_bindings"])
         {
-            char key = item.second.as<std::string>()[0];
-            std::string topic = item.first.as<std::string>();
-            // Store the topic name for printing help message
-            // Is inserted in the same order as the bindings
-            _topic_names.insert(_topic_names.begin(), topic); 
+            // Go through each custom_xx entry and store the key, topic, topic_type and data
+            std::string custom_key = custom_item.first.as<std::string>();
+            std::string description = custom_item.second["description"].as<std::string>();
+            char key = custom_item.second["key"].as<std::string>()[0];
+            std::string topic = custom_item.second["topic"].as<std::string>();
+            std::string topic_type = custom_item.second["topic_type"].as<std::string>();
 
-            _customBindings[key] = [this, topic]()
+            // Store the description for printing help message
+            _custom_item_description.push_back(description);
+            
+
+            if (topic_type == "std_msgs/Bool")
             {
-                std_msgs::String msg;
-                msg.data = "trigger";
-                ros::Publisher pub = _nh.advertise<std_msgs::String>(topic, 1);
-                pub.publish(msg);
-            };
+                bool data = custom_item.second["data"].as<bool>();
+                _customBindings[key] = [this, topic, data]()
+                {
+                    std_msgs::Bool msg;
+                    msg.data = data;
+                    ros::Publisher pub = _nh.advertise<std_msgs::Bool>(topic, data);
+                    pub.publish(msg);
+                };
+            }
+            else if (topic_type == "std_msgs/String")
+            {
+                std::string data = custom_item.second["data"].as<std::string>();
+                _customBindings[key] = [this, topic, data]()
+                {
+                    std_msgs::String msg;
+                    msg.data = data;
+                    ros::Publisher pub = _nh.advertise<std_msgs::String>(topic, 1);
+                    pub.publish(msg);
+                };
+            }
+            else if (topic_type == "std_msgs/Int32")
+            {
+                int data = custom_item.second["data"].as<int>();
+                _customBindings[key] = [this, topic, data]()
+                {
+                    std_msgs::Int32 msg;
+                    msg.data = data;
+                    ros::Publisher pub = _nh.advertise<std_msgs::Int32>(topic, 1);
+                    pub.publish(msg);
+                };
+            }
+            else if (topic_type == "std_msgs/Float32")
+            {
+                float data = custom_item.second["data"].as<float>();
+                _customBindings[key] = [this, topic, data]()
+                {
+                    std_msgs::Float32 msg;
+                    msg.data = data;
+                    ros::Publisher pub = _nh.advertise<std_msgs::Float32>(topic, 1);
+                    pub.publish(msg);
+                };
+            }
         }
     }
     catch (const YAML::Exception &e)
@@ -225,7 +269,7 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     std::cout << "Moving around:\n";
 
     // Helper lambda to find and print a key for a given action
-    auto findAndPrintKey = [](const std::map<char, std::string> &bindings, const std::string &action)
+    auto findAndPrintKey = [](const std::unordered_map<char, std::string> &bindings, const std::string &action)
     {
         for (const auto &binding : bindings)
         {
@@ -280,42 +324,63 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     std::cout << "anything else : stop\n\n";
 
     // Print the speed adjustment keys
+    /*
+        q/z : increase/decrease max speeds by 10%
+        w/x : increase/decrease only linear speed by 10%
+        e/c : increase/decrease only angular speed by 10%
+    */
 
-    // char key = item.second.as<std::string>()[0];
-    //  std::string action = item.first.as<std::string>();
+    std::cout << "Speed:\n";
+    std::cout << "---------------------------\n";
+    uint8_t format_counter = 0;
 
-    std::cout << "/";
-    // findAndPrintKey(_speedBindings, "decrease_max_speed_by_10");
-    // std::cout << " : increase/decrease max speeds by 10%\n";
+    for (auto it = _speedBindings.cbegin(); it != _speedBindings.cend(); ++it) 
+    {
+            switch(format_counter)
+            {
+                case 0:
+                    std::cout << (*it).first << " : increase max speeds by 10%\n";
+                    format_counter++;
+                    break;
+                case 1:
+                    std::cout << (*it).first << " : decrease max speeds by 10%\n";
+                    format_counter++;
+                    break;
+                case 2:
+                    std::cout << (*it).first << " : increase linear speed by 10%\n";
+                    format_counter++;
+                    break;
+                case 3:
+                    std::cout << (*it).first << " : decrease linear speed by 10%\n";
+                    format_counter++;
+                    break;
+                case 4:
+                    std::cout << (*it).first << " : increase angular speed by 10%\n";
+                    format_counter++;
+                    break;
+                case 5:
+                    std::cout << (*it).first << " : decrease angular speed by 10%\n";
+                    format_counter = 0;
+                    break;
+                default:
+                    break;
+            }
+    }
 
-    // findAndPrintKey(_speedBindings, "increase_linear_speed_by_10");
-    // std::cout << "/";
-    // findAndPrintKey(_speedBindings, "decrease_linear_speed_by_10");
-    // std::cout << " : increase/decrease only linear speed by 10%\n";
-
-    // findAndPrintKey(_speedBindings, "increase_angular_speed_by_10");
-    // std::cout << "/";
-    // findAndPrintKey(_speedBindings, "decrease_angular_speed_by_10");
-    // std::cout << " : increase/decrease only angular speed by 10%\n\n";
-
-    std::cout << "CTRL-C to quit" << std::endl;
+    std::cout << "\nCTRL-C to quit" << std::endl;
 
     // Print the custom bindings
     std::cout << "\nCustom bindings:\n";
     std::cout << "---------------------------\n";
 
-    auto print_map = [](const std::unordered_map<char, std::function<void()>> &m, std::vector<std::string> &vector_of_strings)
+    // Print custom key and description
+    for (size_t i = 0; i < _custom_item_description.size(); ++i)
     {
-        int vector_iterator = 0;
+        std::cout << _custom_item_description[i] << " : " << i << "\n";
 
-        for (auto it = m.cbegin(); it != m.cend(); ++it)
-        {
-                std::cout << it->first << " : " << vector_of_strings[vector_iterator] << "\n";
-                vector_iterator++;
-        }
-    };
+    }
 
-    print_map(_customBindings, _topic_names);
+    std::cout << std::endl;
 }
 
 void TeleopTwistKeyboardPlus::keyLoop()

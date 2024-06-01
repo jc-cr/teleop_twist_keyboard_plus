@@ -31,12 +31,38 @@ speed_bindings:
   increase_angular_speed_by_10: e
 
 custom_bindings:
-  # Format: string name of topic to publish to: key press
-  publish:
-    mission_start: s
-    mission_stop: p
-    waypoint_capture_start: w
-    target_capture_start: t
-    scene_scan_start: a
-  subscribe:
-    # Example: subscribe_topic: /some/topic
+  custom_00:
+    description: "Start mission" 
+    key: "1"
+    topic: /start_mission
+    topic_type: std_msgs/Bool
+    topic_action: publish
+    data: "true" 
+  custom_01:
+    description: "Stop mission" 
+    key: "2"
+    topic: /stop_mission
+    topic_type: std_msgs/Bool
+    topic_action: publish
+    data: "true"
+  custom_02:
+    description: "Capture waypoint" 
+    key: "3"
+    topic: /capture_waypoint
+    topic_type: std_msgs/Bool
+    topic_action: publish
+    data: "true"
+  custom_03:
+    description: "Capture target" 
+    key: "4"
+    topic: /capture_target
+    topic_type: std_msgs/Bool
+    topic_action: publish
+    data: "true"
+  custom_04:
+    description: "Start scene scan" 
+    key: "5"
+    topic: /start_scene_scan
+    topic_type: std_msgs/Bool
+    topic_action: publish
+    data: "true"
