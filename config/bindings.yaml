@@ -35,34 +35,34 @@ custom_bindings:
     description: "Start mission" 
     key: "1"
     topic: /start_mission
-    topic_type: std_msgs/Bool
+    topic_type: std_msgs/Empty
     topic_action: publish
-    data: "true" 
+    data: "" 
   custom_01:
-    description: "Stop mission" 
+    description: "End mission" 
     key: "2"
-    topic: /stop_mission
-    topic_type: std_msgs/Bool
+    topic: /end_mission
+    topic_type: std_msgs/Empty
     topic_action: publish
-    data: "true"
+    data: ""
   custom_02:
     description: "Capture waypoint" 
     key: "3"
     topic: /capture_waypoint
-    topic_type: std_msgs/Bool
+    topic_type: std_msgs/Empty
     topic_action: publish
-    data: "true"
+    data: ""
   custom_03:
-    description: "Capture target" 
-    key: "4"
-    topic: /capture_target
-    topic_type: std_msgs/Bool
+    description: "Capture target image"
+    key: "4" 
+    topic: /capture_target_image
+    topic_type: std_msgs/Empty
     topic_action: publish
-    data: "true"
+    data: ""
   custom_04:
-    description: "Start scene scan" 
+    description: "Start panoramic scan"
     key: "5"
-    topic: /start_scene_scan
-    topic_type: std_msgs/Bool
+    topic: /start_panoramic_scan
+    topic_type: std_msgs/Empty
     topic_action: publish
-    data: "true"
+    data: ""

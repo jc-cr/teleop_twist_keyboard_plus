@@ -11,6 +11,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Empty.h>
 #include <assert.h>
 
 static struct termios cooked;
@@ -197,60 +198,70 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
 
         for (const auto &custom_item : config["custom_bindings"])
         {
-            // Go through each custom_xx entry and store the key, topic, topic_type and data
             std::string custom_key = custom_item.first.as<std::string>();
             std::string description = custom_item.second["description"].as<std::string>();
             char key = custom_item.second["key"].as<std::string>()[0];
             std::string topic = custom_item.second["topic"].as<std::string>();
             std::string topic_type = custom_item.second["topic_type"].as<std::string>();
 
-            // Store the description for printing help message
             _custom_item_description.push_back(description);
-            
 
             if (topic_type == "std_msgs/Bool")
             {
                 bool data = custom_item.second["data"].as<bool>();
-                _customBindings[key] = [this, topic, data]()
+                auto pub = _nh.advertise<std_msgs::Bool>(topic, 1);
+                _customBindings[key] = [pub, topic, data]()
                 {
                     std_msgs::Bool msg;
                     msg.data = data;
-                    ros::Publisher pub = _nh.advertise<std_msgs::Bool>(topic, data);
                     pub.publish(msg);
                 };
             }
             else if (topic_type == "std_msgs/String")
             {
                 std::string data = custom_item.second["data"].as<std::string>();
-                _customBindings[key] = [this, topic, data]()
+                auto pub = _nh.advertise<std_msgs::String>(topic, 1);
+                _customBindings[key] = [pub, topic, data]()
                 {
                     std_msgs::String msg;
                     msg.data = data;
-                    ros::Publisher pub = _nh.advertise<std_msgs::String>(topic, 1);
                     pub.publish(msg);
                 };
             }
             else if (topic_type == "std_msgs/Int32")
             {
                 int data = custom_item.second["data"].as<int>();
-                _customBindings[key] = [this, topic, data]()
+                auto pub = _nh.advertise<std_msgs::Int32>(topic, 1);
+                _customBindings[key] = [pub, topic, data]()
                 {
                     std_msgs::Int32 msg;
                     msg.data = data;
-                    ros::Publisher pub = _nh.advertise<std_msgs::Int32>(topic, 1);
                     pub.publish(msg);
                 };
             }
             else if (topic_type == "std_msgs/Float32")
             {
                 float data = custom_item.second["data"].as<float>();
-                _customBindings[key] = [this, topic, data]()
+                auto pub = _nh.advertise<std_msgs::Float32>(topic, 1);
+                _customBindings[key] = [pub, topic, data]()
                 {
                     std_msgs::Float32 msg;
                     msg.data = data;
-                    ros::Publisher pub = _nh.advertise<std_msgs::Float32>(topic, 1);
                     pub.publish(msg);
                 };
+            }
+            else if (topic_type == "std_msgs/Empty")
+            {
+                auto pub = _nh.advertise<std_msgs::Empty>(topic, 1);
+                _customBindings[key] = [pub, topic]()
+                {
+                    std_msgs::Empty msg;
+                    pub.publish(msg);
+                };
+            }
+            else
+            {
+                ROS_ERROR("Unknown topic type %s for custom binding %s", topic_type.c_str(), custom_key.c_str());
             }
         }
     }
@@ -261,6 +272,7 @@ void TeleopTwistKeyboardPlus::_loadBindings(const std::string &config_file)
         exit(1);
     }
 }
+
 
 void TeleopTwistKeyboardPlus::_printHelpMessage()
 {
@@ -323,13 +335,6 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
 
     std::cout << "anything else : stop\n\n";
 
-    // Print the speed adjustment keys
-    /*
-        q/z : increase/decrease max speeds by 10%
-        w/x : increase/decrease only linear speed by 10%
-        e/c : increase/decrease only angular speed by 10%
-    */
-
     std::cout << "Speed:\n";
     std::cout << "---------------------------\n";
     uint8_t format_counter = 0;
@@ -376,7 +381,7 @@ void TeleopTwistKeyboardPlus::_printHelpMessage()
     // Print custom key and description
     for (size_t i = 0; i < _custom_item_description.size(); ++i)
     {
-        std::cout << _custom_item_description[i] << " : " << i << "\n";
+        std::cout << _custom_item_description[i] << " : " << (i + 1) << "\n";
 
     }
 
@@ -434,7 +439,7 @@ void TeleopTwistKeyboardPlus::keyLoop()
         {
             _speed = std::min(_speed_limit, _speed * _speedBindings[c].first);
             _turn = std::min(_turn_limit, _turn * _speedBindings[c].second);
-            printf("currently:\tspeed %f\tturn %f\n", _speed, _turn);
+            std::cout << "Speed set to: " << _speed << ", Turn set to: " << _turn << std::endl;
         }
         else if (_customBindings.find(c) != _customBindings.end())
         {
