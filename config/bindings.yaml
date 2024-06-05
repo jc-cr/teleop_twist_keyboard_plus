@@ -62,7 +62,7 @@ custom_bindings:
   custom_04:
     description: "Start panoramic scan"
     key: "5"
-    topic: /start_panoramic_scan
+    topic: /start_panorama_scan
     topic_type: std_msgs/Empty
     topic_action: publish
     data: ""
