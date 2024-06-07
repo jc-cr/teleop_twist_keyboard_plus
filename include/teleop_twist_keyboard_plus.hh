@@ -22,6 +22,7 @@ private:
 
     ros::NodeHandle _nh;
     ros::Publisher _cmd_vel_pub;
+    geometry_msgs::Twist _twist_msg;
 
     std::unordered_map<char, std::vector<float>> _moveBindings;
     std::unordered_map<char, std::string> _actionBindings; 
@@ -39,5 +40,4 @@ private:
     float _turn_limit;
     float _key_timeout;
 
-    geometry_msgs::Twist _twist_msg;
 };
